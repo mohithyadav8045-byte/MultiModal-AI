@@ -1,0 +1,24 @@
+{
+  "name": "omnimind-ai-workspace",
+  "version": "1.0.0",
+  "description": "Enterprise Multimodal AI Knowledge & Operational Workspace (OmniDoc AI)",
+  "scripts": {
+    "setup:backend": "cd backend && npm install",
+    "setup:frontend": "cd frontend && npm install",
+    "setup": "npm run setup:backend && npm run setup:frontend",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "start": "cd backend && npm start"
+  },
+  "keywords": [
+    "multimodal",
+    "gemini",
+    "knowledge-base",
+    "vector-search",
+    "enterprise-ai",
+    "document-intelligence"
+  ],
+  "author": "OmniMind AI Systems",
+  "license": "MIT"
+}
+

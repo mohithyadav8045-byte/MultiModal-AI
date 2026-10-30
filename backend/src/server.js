@@ -1,0 +1,103 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import multer from 'multer';
+
+import db from './config/db.js';
+import authRoutes from './routes/auth.routes.js';
+import assetRoutes from './routes/asset.routes.js';
+import chatRoutes from './routes/chat.routes.js';
+import reportRoutes from './routes/report.routes.js';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Security & CORS Configuration
+const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or same-origin)
+    if (!origin) return callback(null, true);
+    if (origin === allowedOrigin || origin.startsWith('http://localhost:')) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Allow dev origins seamlessly
+  },
+  credentials: true
+}));
+
+// Body Parsers
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Static file hosting for uploads
+const uploadDir = path.resolve(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadDir));
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'OmniMind AI Backend',
+    database: db.isPostgres() ? 'PostgreSQL' : 'Embedded Storage',
+    geminiStatus: process.env.GEMINI_API_KEY ? 'Configured' : 'Simulation Mode'
+  });
+});
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/reports', reportRoutes);
+
+// Global Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error('[Unhandled Server Error]:', err);
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        error: 'File size exceeds 50MB limit.'
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      error: `Upload error: ${err.message}`
+    });
+  }
+
+  const statusCode = err.status || 500;
+  return res.status(statusCode).json({
+    success: false,
+    error: err.message || 'Internal server error occurred.'
+  });
+});
+
+// Start Server and Initialize Database
+async function startServer() {
+  try {
+    await db.initDatabase();
+    app.listen(PORT, () => {
+      console.log(`=======================================================`);
+      console.log(`🚀 OmniMind AI Server running on port ${PORT}`);
+      console.log(`🔗 API Base: http://localhost:${PORT}/api`);
+      console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`=======================================================`);
+    });
+  } catch (startupErr) {
+    console.error('Failed to start server:', startupErr);
+    process.exit(1);
+  }
+}
+
+startServer();
+
