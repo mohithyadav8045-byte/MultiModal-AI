@@ -47,3 +47,4 @@ export default {
   url: supabaseUrl,
   anonKey: supabaseAnonKey
 };
+

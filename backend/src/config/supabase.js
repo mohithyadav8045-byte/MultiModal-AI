@@ -59,3 +59,4 @@ export default {
   anonKey: supabaseAnonKey,
   serviceKey: supabaseServiceKey
 };
+

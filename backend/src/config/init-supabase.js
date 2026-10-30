@@ -60,3 +60,4 @@ async function checkSupabase() {
 }
 
 checkSupabase();
+

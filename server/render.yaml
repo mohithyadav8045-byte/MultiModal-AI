@@ -36,3 +36,4 @@ services:
         sync: false
       - key: MAX_FILE_SIZE_MB
         value: "50"
+

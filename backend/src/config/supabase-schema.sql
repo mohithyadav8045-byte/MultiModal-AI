@@ -104,3 +104,4 @@ CREATE POLICY "Public Access for multimodal assets" ON storage.objects
 -- Storage RLS: Service role and authenticated user insert access
 CREATE POLICY "Authenticated Uploads for multimodal assets" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'multimodal-assets');
+
