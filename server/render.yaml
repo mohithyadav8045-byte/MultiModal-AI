@@ -1,0 +1,38 @@
+# ==============================================================================
+# Render Blueprint Specification for OmniMind Server
+# ==============================================================================
+services:
+  - type: web
+    name: omnimind-server
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install
+    startCommand: node src/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: multimodal-assets
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: MAX_FILE_SIZE_MB
+        value: "50"

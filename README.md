@@ -1,197 +1,165 @@
 # OmniMind AI (OmniDoc AI)
-### Production-Grade Enterprise Multimodal AI Knowledge & Operational Workspace
+### 3-Tier Enterprise Multimodal Architecture: Client (Vercel) • Server (Render) • Backend (Supabase)
 
-![Architecture](https://img.shields.io/badge/Architecture-Multimodal%20AI-0c8fe9?style=for-the-badge)
-![Gemini](https://img.shields.io/badge/Google%20Gemini-2.5%20Flash%20%7C%202.5%20Pro-4285F4?style=for-the-badge&logo=google)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Vector%20Ready-336791?style=for-the-badge&logo=postgresql)
-![React](https://img.shields.io/badge/React%2018-Vite%20%7C%20Tailwind-61DAFB?style=for-the-badge&logo=react)
-![Node](https://img.shields.io/badge/Node.js-Express%20%7C%20JWT-339933?style=for-the-badge&logo=node.js)
-
----
-
-## 1. Executive System Overview
-
-**OmniMind AI** is an enterprise-ready multimodal workspace designed to ingest, process, correlate, search, and reason across heterogeneous data streams. By unifying text documents (PDF, DOCX, TXT), high-resolution visuals (scanned invoices, blueprints, PNG, JPEG), audio recordings (interviews, memos, MP3, WAV), and video streams (webinars, product demos, MP4, AVI), OmniMind eliminates enterprise data silos.
-
-Powered by the **Google Gemini Multimodal API** (`gemini-2.5-flash` for high-throughput ingestion and conversational reasoning; `gemini-2.5-pro` for deep synthesis reports) and secured with **PostgreSQL Row Level Security (RLS)** patterns, OmniMind provides an auditable, cited, and grounded intelligence environment.
+![Architecture](https://img.shields.io/badge/Architecture-3--Tier%20Distributed-0c8fe9?style=for-the-badge)
+![Supabase](https://img.shields.io/badge/Supabase-Database%20%7C%20Storage%20%7C%20RLS-3ECF8E?style=for-the-badge&logo=supabase)
+![Render](https://img.shields.io/badge/Render-Backend%20Web%20Service-46E3B7?style=for-the-badge&logo=render)
+![Vercel](https://img.shields.io/badge/Vercel-Client%20Deployment-000000?style=for-the-badge&logo=vercel)
+![Gemini](https://img.shields.io/badge/Google%20Gemini-2.5%20Flash%20%26%20Pro-4285F4?style=for-the-badge&logo=google)
 
 ---
 
-## 2. Architecture & Tech Stack
+## 1. System Topology Overview
+
+The workspace is organized into **three distinct, modular systems**:
 
 ```mermaid
-graph TD
-    Client["React 18 + Vite + Tailwind Client (OmniDoc UI)"]
-    API["Express.js REST API + Multer File Pipeline"]
-    Auth["JWT + Bcrypt (12 Rounds) Auth Middleware"]
-    DB[("PostgreSQL Database (Neon / Supabase / Local)")]
-    Gemini["Google Gemini 2.5 Flash & 2.5 Pro Multimodal Engine"]
-    Storage["Secure Server-Side Storage (/uploads)"]
+graph LR
+    subgraph Client ["1. Client (Vercel)"]
+        UI["React 18 + Vite SPA"]
+        VercelConfig["vercel.json Routing"]
+        ClientSB["@supabase/supabase-js (Anon Key)"]
+    end
 
-    Client -->|Bearer JWT / REST| API
-    API --> Auth
-    API -->|Parameterized SQL| DB
-    API -->|Multipart Uploads| Storage
-    API -->|Base64 Media + Prompts| Gemini
-    Gemini -->|OCR, Transcripts, JSON Schema| API
-    DB -->|Grounded Context & Citations| API
+    subgraph Server ["2. Server (Render)"]
+        Express["Express.js API Gateway"]
+        AuthMiddleware["JWT + Bcrypt Auth"]
+        RenderConfig["render.yaml Blueprint"]
+        GeminiService["Google Gemini 2.5 Flash / Pro"]
+    end
+
+    subgraph Backend ["3. Backend (Supabase)"]
+        PG["Supabase PostgreSQL (Port 6543/5432)"]
+        Storage["Supabase Storage ('multimodal-assets')"]
+        RLS["Row Level Security Policies"]
+        AdminSB["Supabase Service Role Key"]
+    end
+
+    Client -->|REST API / Bearer JWT| Server
+    Client -.->|Direct Public Previews| Storage
+    Server -->|Admin Client / Service Key| Storage
+    Server -->|SQL Connection Pool| PG
+    Server -->|Base64 Media & Prompts| GeminiService
 ```
 
-* **Frontend:** React 18, Vite, React Router v6, Tailwind CSS, Lucide React, Axios, React Markdown.
-* **Backend:** Node.js (ES Modules), Express.js, JWT (`jsonwebtoken`), `bcryptjs`, `zod` input validation, `multer` multipart ingestion.
-* **Database:** PostgreSQL with `uuid-ossp`, indexes, and strict user-scoped parameterized SQL queries.
-* **AI Engine:** `@google/genai` official SDK.
+1. **`client/` (Frontend - Vercel Ready):**
+   - Single-Page React 18 Application with Vite and Tailwind CSS.
+   - Configured specifically for **Vercel** with `client/vercel.json` for SPA rewrites and security headers.
+   - Initialized with `@supabase/supabase-js` using `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+2. **`server/` (API Server - Render Ready):**
+   - Express.js REST API with route controllers, Zod validation, and Multer file upload pipelines.
+   - Configured for **Render** via `server/render.yaml` with automated health checks (`/api/health`) and `/api/supabase/status`.
+
+3. **`backend/` (Database & Storage Engine - Supabase Connected):**
+   - Contains direct PostgreSQL connection pool (`pg`) for high-performance direct SQL.
+   - Includes production Supabase schema (`backend/src/config/supabase-schema.sql`) with tables, UUID generator, and RLS policies.
+   - Provides Supabase Storage service (`backend/src/services/supabase-storage.service.js`) for automatic upload and signed URL streaming to the `multimodal-assets` bucket.
+   - Includes verification script: `node backend/src/config/init-supabase.js`.
 
 ---
 
-## 3. Directory Structure
+## 2. Dedicated Environment Configuration
 
-```text
-MultiModal--AI/
-├── .env.example              # Root environment template
-├── package.json              # Monorepo management scripts
-├── backend/
-│   ├── .env                  # Backend environment file (JWT, DB, Gemini API key)
-│   ├── .env.example          # Backend environment template
-│   ├── package.json
-│   ├── uploads/              # Ingested multimodal storage
-│   └── src/
-│       ├── config/
-│       │   ├── db.js         # PostgreSQL connection pool with persistent fallback
-│       │   └── setup-db.js   # Direct SQL table migration runner
-│       ├── controllers/
-│       │   ├── auth.controller.js
-│       │   ├── asset.controller.js
-│       │   ├── chat.controller.js
-│       │   └── report.controller.js
-│       ├── middleware/
-│       │   ├── auth.middleware.js
-│       │   ├── upload.middleware.js
-│       │   └── validate.middleware.js
-│       ├── routes/
-│       │   ├── auth.routes.js
-│       │   ├── asset.routes.js
-│       │   ├── chat.routes.js
-│       │   └── report.routes.js
-│       ├── services/
-│       │   └── gemini.service.js  # Google Gemini 2.5 Flash & Pro integrations
-│       └── server.js
-└── frontend/
-    ├── .env                  # Frontend environment file
-    ├── .env.example          # Frontend environment template
-    ├── package.json
-    ├── vite.config.js
-    ├── tailwind.config.js
-    ├── index.html
-    └── src/
-        ├── components/
-        │   ├── Navbar.jsx
-        │   ├── Sidebar.jsx
-        │   ├── FileUploadZone.jsx
-        │   ├── AssetCard.jsx
-        │   ├── ChatInterface.jsx
-        │   ├── ReportBuilder.jsx
-        │   └── ProtectedRoute.jsx
-        ├── context/
-        │   └── AuthContext.jsx
-        ├── pages/
-        │   ├── LandingPage.jsx
-        │   ├── LoginPage.jsx
-        │   ├── RegisterPage.jsx
-        │   ├── DashboardPage.jsx
-        │   ├── UploadPage.jsx
-        │   ├── WorkspacePage.jsx
-        │   ├── ChatPage.jsx
-        │   └── ReportsPage.jsx
-        ├── services/
-        │   └── api.js
-        ├── App.jsx
-        └── main.jsx
-```
+Each tier has dedicated environment files and dedicated Supabase configuration files:
 
----
-
-## 4. Environment Variables (`.env`)
-
-### Backend (`backend/.env`)
+### Client Configuration (`client/.env` and `client/.env.supabase`)
 ```env
-PORT=5000
-NODE_ENV=development
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/omnidoc_ai
-JWT_SECRET=super_secret_jwt_key_omnimind_production_grade_change_in_prod_2026
-GEMINI_API_KEY=your_google_gemini_api_key_here
-MAX_FILE_SIZE_MB=50
-UPLOAD_DIR=./uploads
-CORS_ORIGIN=http://localhost:5173
-```
-
-> **Google Gemini API Key:**  
-> Get your API key from Google AI Studio at: [https://aistudio.google.com/](https://aistudio.google.com/) and paste it into `backend/.env`.
-
-### Frontend (`frontend/.env`)
-```env
+# Backend API Base (Local or Render)
 VITE_API_BASE_URL=http://localhost:5000/api
+
+# Supabase Project Credentials
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_SERVICE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+VITE_SUPABASE_STORAGE_BUCKET=multimodal-assets
+```
+
+### Backend & Server Configuration (`backend/.env.supabase` / `server/.env.supabase`)
+```env
+# Supabase Project URL
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_URL=https://your-project-id.supabase.co
+
+# Supabase Anon Key (Public)
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+
+# Supabase Service Role Key (Secret Service Key - keeps backend authorized to manage storage)
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key_here
+
+# Supabase PostgreSQL Database Connection URL (Transaction Pooler or Direct)
+DATABASE_URL=postgresql://postgres.your-project-id:your-db-password@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+
+# Supabase Storage Bucket
+SUPABASE_STORAGE_BUCKET=multimodal-assets
 ```
 
 ---
 
-## 5. Quickstart & Installation
+## 3. How to Connect Supabase in 3 Simple Steps
 
-### Step 1: Install Dependencies
-```bash
-# In backend
-cd backend
-npm install
+### Step 1: Create Supabase Project
+1. Log in to [Supabase](https://supabase.com/) and create a new project.
+2. Go to **Project Settings -> API** and copy:
+   - **Project URL**
+   - **Project API Keys:** `anon` (public) and `service_role` (secret)
+3. Go to **Project Settings -> Database** and copy the **Connection String** (choose URI with connection pooling or direct).
 
-# In frontend
-cd ../frontend
-npm install
+### Step 2: Paste Credentials into `.env.supabase`
+Open [backend/.env.supabase](file:///c:/Users/dines/Downloads/MultiModal--AI/backend/.env.supabase) and [client/.env.supabase](file:///c:/Users/dines/Downloads/MultiModal--AI/client/.env.supabase) and paste your credentials:
+```env
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+DATABASE_URL=postgresql://postgres.<project-id>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
 ```
 
-### Step 2: Configure Environment Files
-Both `backend/.env` and `frontend/.env` have been generated. Add your `GEMINI_API_KEY` to `backend/.env` for live Google Gemini API inference.
-
-### Step 3: Run the Application
-In separate terminal sessions:
-
-```bash
-# Start Backend (port 5000)
-cd backend
-npm run dev
-
-# Start Frontend (port 5173)
-cd frontend
-npm run dev
-```
-
-Open your browser at `http://localhost:5173`.
+### Step 3: Run the Schema in Supabase SQL Editor
+1. In the Supabase Dashboard, open the **SQL Editor**.
+2. Copy and paste the contents of [backend/src/config/supabase-schema.sql](file:///c:/Users/dines/Downloads/MultiModal--AI/backend/src/config/supabase-schema.sql).
+3. Click **Run**. This will create the `users`, `assets`, `chat_sessions`, `chat_messages`, `reports` tables, configure RLS policies, and initialize the `multimodal-assets` storage bucket.
+4. Verify from the terminal:
+   ```bash
+   npm run supabase:check
+   ```
 
 ---
 
-## 6. API Route Specification
+## 4. Deployment Guides
 
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Register user with email, name, password | No |
-| `POST` | `/api/auth/login` | Authenticate user & issue signed JWT | No |
-| `GET` | `/api/auth/me` | Fetch authenticated user profile | Yes (Bearer JWT) |
-| `POST` | `/api/assets/upload` | Multipart upload (PDF, DOCX, PNG, MP3, MP4) | Yes (Bearer JWT) |
-| `GET` | `/api/assets` | Query & filter assets by modality or search | Yes (Bearer JWT) |
-| `GET` | `/api/assets/:id` | Detailed asset metadata & OCR transcript | Yes (Bearer JWT) |
-| `GET` | `/api/assets/:id/file` | Stream or download raw file | Yes (Bearer JWT) |
-| `DELETE`| `/api/assets/:id` | Remove asset and delete from disk | Yes (Bearer JWT) |
-| `GET` | `/api/assets/stats/summary`| Aggregated modality counts & storage stats | Yes (Bearer JWT) |
-| `POST` | `/api/chat/sessions` | Create new multi-document chat session | Yes (Bearer JWT) |
-| `GET` | `/api/chat/sessions` | List user conversation threads | Yes (Bearer JWT) |
-| `POST` | `/api/chat/message` | Send prompt with selected multimodal assets | Yes (Bearer JWT) |
-| `POST` | `/api/reports/generate` | Generate executive report with Gemini 2.5 Pro | Yes (Bearer JWT) |
-| `GET` | `/api/reports` | Archive of generated reports | Yes (Bearer JWT) |
+### Deploying the Backend on Render
+1. Push your repository to GitHub.
+2. In the [Render Dashboard](https://dashboard.render.com/), click **New -> Web Service** and select your repository (Root Directory: `backend` or `server`).
+3. Set **Build Command:** `npm install`
+4. Set **Start Command:** `node src/server.js`
+5. Under **Environment Variables**, add:
+   - `DATABASE_URL`: Your Supabase pooler URL
+   - `SUPABASE_URL`: `https://<your-project>.supabase.co`
+   - `SUPABASE_ANON_KEY`: `<your-anon-key>`
+   - `SUPABASE_SERVICE_ROLE_KEY`: `<your-service-key>`
+   - `GEMINI_API_KEY`: `<your-gemini-key>`
+   - `JWT_SECRET`: `<your-jwt-secret>`
+   - `CORS_ORIGIN`: Your Vercel frontend URL (e.g. `https://omnimind-client.vercel.app`)
+
+### Deploying the Client on Vercel
+1. In the [Vercel Dashboard](https://vercel.com/), click **Add New -> Project** and select your repository.
+2. Set **Root Directory:** `client` (or `frontend`).
+3. Framework Preset: **Vite** (auto-detected).
+4. Under **Environment Variables**, add:
+   - `VITE_API_BASE_URL`: `https://<your-render-service>.onrender.com/api`
+   - `VITE_SUPABASE_URL`: `https://<your-project>.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY`: `<your-anon-key>`
+5. Click **Deploy**. Vercel will build the SPA using [client/vercel.json](file:///c:/Users/dines/Downloads/MultiModal--AI/client/vercel.json) without any routing issues.
 
 ---
 
-## 7. Production Deployment Targets
+## 5. Local Development Commands
 
-* **Frontend:** Deploy to **Vercel** or **Netlify** with `npm run build` and output directory `dist`. Set `VITE_API_BASE_URL` in project settings.
-* **Backend:** Deploy to **Render** or **Railway** as a Node.js web service running `node src/server.js`.
-* **Database:** Connect any managed PostgreSQL database (such as **Neon.tech** or **Supabase**) by setting `DATABASE_URL` in your production environment variables.
-
+| Command | Action |
+| :--- | :--- |
+| `npm run client:dev` | Launch React client on `http://localhost:5173` |
+| `npm run client:build` | Build production client for Vercel |
+| `npm run backend:dev` | Launch backend with Supabase connector on `http://localhost:5000` |
+| `npm run server:dev` | Launch standalone API server on `http://localhost:5000` |
+| `npm run supabase:check` | Verify live Supabase database & storage connectivity |

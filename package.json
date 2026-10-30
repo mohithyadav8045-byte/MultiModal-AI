@@ -1,19 +1,27 @@
 {
   "name": "omnimind-ai-workspace",
   "version": "1.0.0",
-  "description": "Enterprise Multimodal AI Knowledge & Operational Workspace (OmniDoc AI)",
+  "description": "Enterprise Multimodal AI Knowledge & Operational Workspace (OmniDoc AI) - 3 Tier Architecture: Client (Vercel), Server (Render API), Backend (Supabase)",
   "scripts": {
+    "client:dev": "cd client && npm run dev",
+    "client:build": "cd client && npm run build",
+    "server:dev": "cd server && npm run dev",
+    "server:start": "cd server && npm start",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "supabase:check": "node backend/src/config/init-supabase.js",
+    "setup:client": "cd client && npm install",
+    "setup:server": "cd server && npm install",
     "setup:backend": "cd backend && npm install",
-    "setup:frontend": "cd frontend && npm install",
-    "setup": "npm run setup:backend && npm run setup:frontend",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "start": "cd backend && npm start"
+    "setup": "npm run setup:client && npm run setup:server && npm run setup:backend",
+    "dev": "npm run backend:dev"
   },
   "keywords": [
     "multimodal",
     "gemini",
-    "knowledge-base",
+    "supabase",
+    "vercel",
+    "render",
     "vector-search",
     "enterprise-ai",
     "document-intelligence"
@@ -21,4 +29,3 @@
   "author": "OmniMind AI Systems",
   "license": "MIT"
 }
-

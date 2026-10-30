@@ -6,29 +6,36 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 
 import db from './config/db.js';
+import { isSupabaseConfigured, supabaseAdmin } from './config/supabase.js';
 import authRoutes from './routes/auth.routes.js';
 import assetRoutes from './routes/asset.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import reportRoutes from './routes/report.routes.js';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load primary .env and .env.supabase
+dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env.supabase') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security & CORS Configuration
+// Security & CORS Configuration (supports Vercel and local dev origins)
 const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, or same-origin)
     if (!origin) return callback(null, true);
-    if (origin === allowedOrigin || origin.startsWith('http://localhost:')) {
+    if (
+      origin === allowedOrigin ||
+      origin.startsWith('http://localhost:') ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.onrender.com')
+    ) {
       return callback(null, true);
     }
-    return callback(null, true); // Allow dev origins seamlessly
+    return callback(null, true);
   },
   credentials: true
 }));
@@ -37,19 +44,50 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Static file hosting for uploads
+// Static file hosting for fallback local uploads
 const uploadDir = path.resolve(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadDir));
 
-// Health check endpoint
+// Health check endpoint (for Render / Vercel ping)
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'OmniMind AI Backend',
-    database: db.isPostgres() ? 'PostgreSQL' : 'Embedded Storage',
+    service: 'OmniMind AI Backend & Render Service',
+    database: db.isPostgres() ? 'PostgreSQL / Supabase' : 'Embedded Storage',
+    supabase: {
+      configured: isSupabaseConfigured,
+      url: process.env.SUPABASE_URL || process.env.SUPABASE_SERVICE_URL || null,
+      storageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'multimodal-assets',
+      hasAnonKey: Boolean(process.env.SUPABASE_ANON_KEY),
+      hasServiceKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)
+    },
     geminiStatus: process.env.GEMINI_API_KEY ? 'Configured' : 'Simulation Mode'
   });
+});
+
+// Dedicated Supabase status & verification endpoint
+app.get('/api/supabase/status', async (req, res) => {
+  try {
+    let storageBuckets = [];
+    if (isSupabaseConfigured && supabaseAdmin) {
+      const { data, error } = await supabaseAdmin.storage.listBuckets();
+      if (!error && data) storageBuckets = data.map(b => b.name);
+    }
+
+    res.status(200).json({
+      success: true,
+      configured: isSupabaseConfigured,
+      projectUrl: process.env.SUPABASE_URL || process.env.SUPABASE_SERVICE_URL || 'Not Set',
+      hasAnonKey: Boolean(process.env.SUPABASE_ANON_KEY),
+      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY),
+      storageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'multimodal-assets',
+      activeBuckets: storageBuckets,
+      renderDeployment: Boolean(process.env.RENDER)
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // API Routes
@@ -88,9 +126,10 @@ async function startServer() {
     await db.initDatabase();
     app.listen(PORT, () => {
       console.log(`=======================================================`);
-      console.log(`🚀 OmniMind AI Server running on port ${PORT}`);
+      console.log(`🚀 OmniMind Backend running on port ${PORT}`);
       console.log(`🔗 API Base: http://localhost:${PORT}/api`);
       console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`⚡ Supabase Configured: ${isSupabaseConfigured ? 'YES' : 'PENDING'}`);
       console.log(`=======================================================`);
     });
   } catch (startupErr) {
@@ -100,4 +139,3 @@ async function startServer() {
 }
 
 startServer();
-

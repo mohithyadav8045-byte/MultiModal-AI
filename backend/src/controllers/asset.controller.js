@@ -3,6 +3,7 @@ import path from 'path';
 import db from '../config/db.js';
 import { getModality } from '../middleware/upload.middleware.js';
 import { extractAssetMetadata } from '../services/gemini.service.js';
+import { uploadToSupabaseStorage, deleteFromSupabaseStorage } from '../services/supabase-storage.service.js';
 
 /**
  * Upload single or multiple multimodal files
@@ -29,7 +30,7 @@ export async function uploadAssets(req, res) {
       const mimeType = file.mimetype;
       const fileName = file.filename;
 
-      // Read file buffer for Gemini AI analysis
+      // Read file buffer for Gemini AI analysis and Supabase Storage upload
       let fileBuffer = null;
       try {
         fileBuffer = fs.readFileSync(filePath);
@@ -54,15 +55,33 @@ export async function uploadAssets(req, res) {
         }
       }
 
+      // Upload to Supabase Storage if configured
+      let supabaseResult = { storageType: 'local', publicUrl: null, path: null };
+      if (fileBuffer) {
+        try {
+          supabaseResult = await uploadToSupabaseStorage({
+            fileBuffer,
+            fileName: file.originalname,
+            mimeType,
+            userId
+          });
+        } catch (sErr) {
+          console.warn('[Asset Controller] Supabase storage upload warning:', sErr.message);
+        }
+      }
+
       const metadata = {
         originalName: file.originalname,
         encoding: file.encoding,
         sentiment: aiResult.sentiment,
         keyTopics: aiResult.key_topics,
-        extractedEntities: aiResult.extracted_entities
+        extractedEntities: aiResult.extracted_entities,
+        storageType: supabaseResult.storageType,
+        supabasePath: supabaseResult.path,
+        storageUrl: supabaseResult.publicUrl
       };
 
-      // Insert asset record into PostgreSQL
+      // Insert asset record into PostgreSQL / Supabase
       const insertResult = await db.query(
         `INSERT INTO assets (
           user_id, title, file_name, file_path, file_size, mime_type, modality, extracted_text, ai_summary, metadata
@@ -120,7 +139,7 @@ export async function listAssets(req, res) {
     const result = await db.query(sql, params);
     let assets = result.rows || [];
 
-    // Optional client-specified text query filter
+    // Optional text query filter
     if (search && search.trim().length > 0) {
       const q = search.toLowerCase().trim();
       assets = assets.filter(a => 
@@ -187,7 +206,7 @@ export async function streamAssetFile(req, res) {
     const { id } = req.params;
 
     const result = await db.query(
-      'SELECT file_path, mime_type, file_name, title FROM assets WHERE id = $1 AND user_id = $2',
+      'SELECT file_path, mime_type, file_name, title, metadata FROM assets WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
 
@@ -196,6 +215,13 @@ export async function streamAssetFile(req, res) {
     }
 
     const asset = result.rows[0];
+
+    // If Supabase Storage public URL exists, redirect directly
+    if (asset.metadata?.storageUrl) {
+      return res.redirect(asset.metadata.storageUrl);
+    }
+
+    // Fallback to local streaming
     if (!fs.existsSync(asset.file_path)) {
       return res.status(404).json({ success: false, error: 'Underlying file missing from storage.' });
     }
@@ -211,7 +237,7 @@ export async function streamAssetFile(req, res) {
 }
 
 /**
- * Delete asset and remove from filesystem
+ * Delete asset and remove from filesystem and Supabase Storage
  */
 export async function deleteAsset(req, res) {
   try {
@@ -219,7 +245,7 @@ export async function deleteAsset(req, res) {
     const { id } = req.params;
 
     const result = await db.query(
-      'SELECT file_path FROM assets WHERE id = $1 AND user_id = $2',
+      'SELECT file_path, metadata FROM assets WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
 
@@ -230,17 +256,28 @@ export async function deleteAsset(req, res) {
       });
     }
 
-    const filePath = result.rows[0].file_path;
+    const asset = result.rows[0];
+    const filePath = asset.file_path;
+    const supabasePath = asset.metadata?.supabasePath;
 
     // Delete record from DB
     await db.query('DELETE FROM assets WHERE id = $1 AND user_id = $2', [id, userId]);
 
-    // Unlink physical file safely
+    // Unlink physical local file safely
     if (filePath && fs.existsSync(filePath)) {
       try {
         fs.unlinkSync(filePath);
       } catch (unlinkErr) {
         console.warn('Could not remove file from disk:', unlinkErr.message);
+      }
+    }
+
+    // Delete from Supabase Storage if stored there
+    if (supabasePath) {
+      try {
+        await deleteFromSupabaseStorage(supabasePath);
+      } catch (sbErr) {
+        console.warn('Could not remove file from Supabase storage:', sbErr.message);
       }
     }
 
@@ -304,4 +341,3 @@ export async function getDashboardStats(req, res) {
     });
   }
 }
-

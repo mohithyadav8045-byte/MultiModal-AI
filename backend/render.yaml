@@ -1,0 +1,39 @@
+# ==============================================================================
+# Render Blueprint Specification for OmniMind Backend
+# Deploys as a Node.js Web Service connecting to Supabase and Google Gemini
+# ==============================================================================
+services:
+  - type: web
+    name: omnimind-backend
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install
+    startCommand: node src/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false # Set in Render Dashboard: Supabase PostgreSQL pooler URL
+      - key: SUPABASE_URL
+        sync: false # Set in Render Dashboard: https://your-project.supabase.co
+      - key: SUPABASE_SERVICE_URL
+        sync: false # Set in Render Dashboard: https://your-project.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false # Set in Render Dashboard: your Supabase anon key
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # Set in Render Dashboard: your Supabase service role secret
+      - key: SUPABASE_STORAGE_BUCKET
+        value: multimodal-assets
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false # Set in Render Dashboard: Google Gemini API key
+      - key: CORS_ORIGIN
+        sync: false # Set in Render Dashboard: Your Vercel frontend URL
+      - key: MAX_FILE_SIZE_MB
+        value: "50"
