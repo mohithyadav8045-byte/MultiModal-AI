@@ -1,20 +1,19 @@
 {
   "name": "omnimind-ai-workspace",
   "version": "1.0.0",
-  "description": "Enterprise Multimodal AI Knowledge & Operational Workspace (OmniDoc AI) - 3 Tier Architecture: Client (Vercel), Server (Render API), Backend (Supabase)",
+  "description": "Enterprise Multimodal AI Knowledge & Operational Workspace (OmniDoc AI) - Clean 3-Tier Architecture",
+  "type": "module",
   "scripts": {
-    "client:dev": "cd client && npm run dev",
-    "client:build": "cd client && npm run build",
-    "server:dev": "cd server && npm run dev",
-    "server:start": "cd server && npm start",
+    "start": "node backend/src/server.js",
+    "build": "cd backend && npm install",
+    "postinstall": "cd backend && npm install",
     "backend:dev": "cd backend && npm run dev",
     "backend:start": "cd backend && npm start",
-    "supabase:check": "node backend/src/config/init-supabase.js",
-    "setup:client": "cd client && npm install",
-    "setup:server": "cd server && npm install",
-    "setup:backend": "cd backend && npm install",
-    "setup": "npm run setup:client && npm run setup:server && npm run setup:backend",
-    "dev": "npm run backend:dev"
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "database:check": "node database/init-supabase.js",
+    "setup": "cd backend && npm install && cd ../frontend && npm install",
+    "dev": "cd backend && npm run dev"
   },
   "keywords": [
     "multimodal",

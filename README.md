@@ -1,165 +1,132 @@
 # OmniMind AI (OmniDoc AI)
-### 3-Tier Enterprise Multimodal Architecture: Client (Vercel) • Server (Render) • Backend (Supabase)
+### Clean 3-Tier Enterprise Multimodal Architecture: Frontend • Backend • Database
 
-![Architecture](https://img.shields.io/badge/Architecture-3--Tier%20Distributed-0c8fe9?style=for-the-badge)
-![Supabase](https://img.shields.io/badge/Supabase-Database%20%7C%20Storage%20%7C%20RLS-3ECF8E?style=for-the-badge&logo=supabase)
-![Render](https://img.shields.io/badge/Render-Backend%20Web%20Service-46E3B7?style=for-the-badge&logo=render)
-![Vercel](https://img.shields.io/badge/Vercel-Client%20Deployment-000000?style=for-the-badge&logo=vercel)
-![Gemini](https://img.shields.io/badge/Google%20Gemini-2.5%20Flash%20%26%20Pro-4285F4?style=for-the-badge&logo=google)
-
----
-
-## 1. System Topology Overview
-
-The workspace is organized into **three distinct, modular systems**:
-
-```mermaid
-graph LR
-    subgraph Client ["1. Client (Vercel)"]
-        UI["React 18 + Vite SPA"]
-        VercelConfig["vercel.json Routing"]
-        ClientSB["@supabase/supabase-js (Anon Key)"]
-    end
-
-    subgraph Server ["2. Server (Render)"]
-        Express["Express.js API Gateway"]
-        AuthMiddleware["JWT + Bcrypt Auth"]
-        RenderConfig["render.yaml Blueprint"]
-        GeminiService["Google Gemini 2.5 Flash / Pro"]
-    end
-
-    subgraph Backend ["3. Backend (Supabase)"]
-        PG["Supabase PostgreSQL (Port 6543/5432)"]
-        Storage["Supabase Storage ('multimodal-assets')"]
-        RLS["Row Level Security Policies"]
-        AdminSB["Supabase Service Role Key"]
-    end
-
-    Client -->|REST API / Bearer JWT| Server
-    Client -.->|Direct Public Previews| Storage
-    Server -->|Admin Client / Service Key| Storage
-    Server -->|SQL Connection Pool| PG
-    Server -->|Base64 Media & Prompts| GeminiService
-```
-
-1. **`client/` (Frontend - Vercel Ready):**
-   - Single-Page React 18 Application with Vite and Tailwind CSS.
-   - Configured specifically for **Vercel** with `client/vercel.json` for SPA rewrites and security headers.
-   - Initialized with `@supabase/supabase-js` using `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-
-2. **`server/` (API Server - Render Ready):**
-   - Express.js REST API with route controllers, Zod validation, and Multer file upload pipelines.
-   - Configured for **Render** via `server/render.yaml` with automated health checks (`/api/health`) and `/api/supabase/status`.
-
-3. **`backend/` (Database & Storage Engine - Supabase Connected):**
-   - Contains direct PostgreSQL connection pool (`pg`) for high-performance direct SQL.
-   - Includes production Supabase schema (`backend/src/config/supabase-schema.sql`) with tables, UUID generator, and RLS policies.
-   - Provides Supabase Storage service (`backend/src/services/supabase-storage.service.js`) for automatic upload and signed URL streaming to the `multimodal-assets` bucket.
-   - Includes verification script: `node backend/src/config/init-supabase.js`.
+![Architecture](https://img.shields.io/badge/Architecture-3--Tier%20Clean-0c8fe9?style=for-the-badge)
+![Frontend](https://img.shields.io/badge/Frontend-Vercel%20%7C%20React%2018%20%7C%20Tailwind-000000?style=for-the-badge&logo=vercel)
+![Backend](https://img.shields.io/badge/Backend-Render%20%7C%20Node.js%20%7C%20Express-46E3B7?style=for-the-badge&logo=render)
+![Database](https://img.shields.io/badge/Database-Supabase%20%7C%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)
 
 ---
 
-## 2. Dedicated Environment Configuration
+## 1. Project Directory Structure
 
-Each tier has dedicated environment files and dedicated Supabase configuration files:
+The project has been organized into **exactly 3 separate, clean directories**:
 
-### Client Configuration (`client/.env` and `client/.env.supabase`)
-```env
-# Backend API Base (Local or Render)
-VITE_API_BASE_URL=http://localhost:5000/api
-
-# Supabase Project Credentials
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_SERVICE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-VITE_SUPABASE_STORAGE_BUCKET=multimodal-assets
-```
-
-### Backend & Server Configuration (`backend/.env.supabase` / `server/.env.supabase`)
-```env
-# Supabase Project URL
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_SERVICE_URL=https://your-project-id.supabase.co
-
-# Supabase Anon Key (Public)
-SUPABASE_ANON_KEY=your_supabase_anon_key_here
-
-# Supabase Service Role Key (Secret Service Key - keeps backend authorized to manage storage)
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
-SUPABASE_SERVICE_KEY=your_supabase_service_role_key_here
-
-# Supabase PostgreSQL Database Connection URL (Transaction Pooler or Direct)
-DATABASE_URL=postgresql://postgres.your-project-id:your-db-password@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-
-# Supabase Storage Bucket
-SUPABASE_STORAGE_BUCKET=multimodal-assets
+```text
+MultiModal--AI/
+│
+├── frontend/               ── 1. FRONTEND SYSTEM (Deploy to Vercel)
+│   ├── .env                ── Local development & Vercel env
+│   ├── .env.example        ── Template for Vercel Project Settings
+│   ├── vercel.json         ── Vercel SPA routing rewrites & security headers
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── index.html
+│   └── src/
+│       ├── components/     ── Navbar, Sidebar, FileUploadZone, AssetCard, ChatInterface, ReportBuilder
+│       ├── pages/          ── Landing, Login, Register, Dashboard, Upload, Workspace, Chat, Reports
+│       ├── context/        ── AuthContext (JWT & Supabase session)
+│       └── services/
+│           ├── api.js      ── Axios client (points to Render backend)
+│           └── supabase.js ── Supabase client (@supabase/supabase-js)
+│
+├── backend/                ── 2. BACKEND SYSTEM (Deploy to Render)
+│   ├── .env                ── Server, Supabase, Gemini & JWT secrets
+│   ├── .env.example        ── Template for Render Environment Variables
+│   ├── render.yaml         ── Render Blueprint deployment configuration
+│   ├── package.json
+│   ├── uploads/            ── Local fallback storage
+│   └── src/
+│       ├── server.js       ── Express API server (/api/health, /api/supabase/status)
+│       ├── config/
+│       │   ├── db.js       ── PostgreSQL pool & query runner
+│       │   └── supabase.js ── Supabase admin & anon client SDK
+│       ├── controllers/    ── auth, asset, chat, report controllers
+│       ├── middleware/     ── auth, upload (50MB Multer), zod validation
+│       ├── routes/         ── auth, asset, chat, report routes
+│       └── services/
+│           ├── gemini.service.js           ── Google Gemini 2.5 Flash & Pro multimodal engine
+│           └── supabase-storage.service.js ── Supabase Storage bucket ('multimodal-assets')
+│
+└── database/               ── 3. DATABASE SYSTEM (Supabase / PostgreSQL)
+    ├── schema.sql          ── Production SQL schema (tables, RLS policies, storage bucket)
+    ├── init-supabase.js    ── Automated connection diagnostic & test script
+    ├── .env.example        ── Supabase connection variables template
+    └── README.md           ── Step-by-step Supabase SQL Editor guide
 ```
 
 ---
 
-## 3. How to Connect Supabase in 3 Simple Steps
+## 2. Deployment Guide: Render & Vercel
 
-### Step 1: Create Supabase Project
-1. Log in to [Supabase](https://supabase.com/) and create a new project.
-2. Go to **Project Settings -> API** and copy:
-   - **Project URL**
-   - **Project API Keys:** `anon` (public) and `service_role` (secret)
-3. Go to **Project Settings -> Database** and copy the **Connection String** (choose URI with connection pooling or direct).
+### A. Deploy Backend to Render
 
-### Step 2: Paste Credentials into `.env.supabase`
-Open [backend/.env.supabase](file:///c:/Users/dines/Downloads/MultiModal--AI/backend/.env.supabase) and [client/.env.supabase](file:///c:/Users/dines/Downloads/MultiModal--AI/client/.env.supabase) and paste your credentials:
-```env
-SUPABASE_URL=https://<your-project>.supabase.co
-SUPABASE_ANON_KEY=<your-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
-DATABASE_URL=postgresql://postgres.<project-id>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
-```
+1. Go to the [Render Dashboard](https://dashboard.render.com/) and click **New +** → **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the service:
+   - **Root Directory:** `backend`
+   - **Runtime:** `Node`
+   - **Build Command:** `npm install`
+   - **Start Command:** `node src/server.js`
+   - **Health Check Path:** `/api/health`
+4. Under **Environment Variables**, add:
+   ```env
+   NODE_ENV=production
+   DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+   SUPABASE_URL=https://[project-id].supabase.co
+   SUPABASE_ANON_KEY=[your-supabase-anon-key]
+   SUPABASE_SERVICE_ROLE_KEY=[your-supabase-service-role-key]
+   SUPABASE_STORAGE_BUCKET=multimodal-assets
+   GEMINI_API_KEY=[your-google-gemini-api-key]
+   JWT_SECRET=[generate-or-paste-any-secret-string]
+   CORS_ORIGIN=https://[your-vercel-app-name].vercel.app
+   ```
+5. Click **Create Web Service**. Once deployed, copy your Render URL (e.g. `https://omnimind-backend.onrender.com`).
 
-### Step 3: Run the Schema in Supabase SQL Editor
-1. In the Supabase Dashboard, open the **SQL Editor**.
-2. Copy and paste the contents of [backend/src/config/supabase-schema.sql](file:///c:/Users/dines/Downloads/MultiModal--AI/backend/src/config/supabase-schema.sql).
-3. Click **Run**. This will create the `users`, `assets`, `chat_sessions`, `chat_messages`, `reports` tables, configure RLS policies, and initialize the `multimodal-assets` storage bucket.
-4. Verify from the terminal:
+---
+
+### B. Deploy Frontend to Vercel
+
+1. Go to the [Vercel Dashboard](https://vercel.com/) and click **Add New…** → **Project**.
+2. Import your GitHub repository.
+3. Configure the project:
+   - **Framework Preset:** `Vite` *(automatically detected)*
+   - **Root Directory:** Click **Edit** and choose `frontend`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+   - **Install Command:** `npm install`
+   - **Start Command:** *(None needed — Vercel serves static/SPA via CDN)*
+4. Under **Environment Variables**, add:
+   ```env
+   VITE_API_BASE_URL=https://[your-render-service].onrender.com/api
+   VITE_SUPABASE_URL=https://[your-project-id].supabase.co
+   VITE_SUPABASE_ANON_KEY=[your-supabase-anon-key]
+   ```
+5. Click **Deploy**. Vercel will build and host your app with SPA client-side routing.
+
+---
+
+### C. Initialize Supabase Database
+
+1. In your [Supabase Dashboard](https://supabase.com/dashboard), open the **SQL Editor**.
+2. Copy and paste the entire contents of `database/schema.sql`.
+3. Click **Run**.
+   - This creates all tables (`users`, `assets`, `chat_sessions`, `chat_messages`, `reports`).
+   - Configures Row Level Security (RLS) policies.
+   - Creates the `multimodal-assets` storage bucket.
+4. Test connectivity from your machine:
    ```bash
-   npm run supabase:check
+   npm run database:check
    ```
 
 ---
 
-## 4. Deployment Guides
-
-### Deploying the Backend on Render
-1. Push your repository to GitHub.
-2. In the [Render Dashboard](https://dashboard.render.com/), click **New -> Web Service** and select your repository (Root Directory: `backend` or `server`).
-3. Set **Build Command:** `npm install`
-4. Set **Start Command:** `node src/server.js`
-5. Under **Environment Variables**, add:
-   - `DATABASE_URL`: Your Supabase pooler URL
-   - `SUPABASE_URL`: `https://<your-project>.supabase.co`
-   - `SUPABASE_ANON_KEY`: `<your-anon-key>`
-   - `SUPABASE_SERVICE_ROLE_KEY`: `<your-service-key>`
-   - `GEMINI_API_KEY`: `<your-gemini-key>`
-   - `JWT_SECRET`: `<your-jwt-secret>`
-   - `CORS_ORIGIN`: Your Vercel frontend URL (e.g. `https://omnimind-client.vercel.app`)
-
-### Deploying the Client on Vercel
-1. In the [Vercel Dashboard](https://vercel.com/), click **Add New -> Project** and select your repository.
-2. Set **Root Directory:** `client` (or `frontend`).
-3. Framework Preset: **Vite** (auto-detected).
-4. Under **Environment Variables**, add:
-   - `VITE_API_BASE_URL`: `https://<your-render-service>.onrender.com/api`
-   - `VITE_SUPABASE_URL`: `https://<your-project>.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY`: `<your-anon-key>`
-5. Click **Deploy**. Vercel will build the SPA using [client/vercel.json](file:///c:/Users/dines/Downloads/MultiModal--AI/client/vercel.json) without any routing issues.
-
----
-
-## 5. Local Development Commands
+## 3. Local Development Commands
 
 | Command | Action |
 | :--- | :--- |
-| `npm run client:dev` | Launch React client on `http://localhost:5173` |
-| `npm run client:build` | Build production client for Vercel |
-| `npm run backend:dev` | Launch backend with Supabase connector on `http://localhost:5000` |
-| `npm run server:dev` | Launch standalone API server on `http://localhost:5000` |
-| `npm run supabase:check` | Verify live Supabase database & storage connectivity |
+| `npm run frontend:dev` | Start React frontend on `http://localhost:5173` |
+| `npm run frontend:build` | Build production frontend bundle |
+| `npm run backend:dev` | Start Express backend on `http://localhost:5000` |
+| `npm run database:check` | Run Supabase connection & storage diagnostic |
+| `npm run setup` | Install dependencies for both backend and frontend |

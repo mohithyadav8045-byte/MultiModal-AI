@@ -5,19 +5,19 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure .env is loaded from backend directory or cwd
+dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 import db from './config/db.js';
 import { isSupabaseConfigured, supabaseAdmin } from './config/supabase.js';
 import authRoutes from './routes/auth.routes.js';
 import assetRoutes from './routes/asset.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import reportRoutes from './routes/report.routes.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load primary .env and .env.supabase
-dotenv.config();
-dotenv.config({ path: path.resolve(__dirname, '../.env.supabase') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;

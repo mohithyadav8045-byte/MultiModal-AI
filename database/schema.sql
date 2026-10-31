@@ -1,6 +1,6 @@
 -- ==============================================================================
--- OmniMind AI (OmniDoc AI) - Supabase Enterprise Production Schema
--- Compatible with PostgreSQL 15+ & Supabase RLS
+-- OmniMind AI (OmniDoc AI) - Supabase / PostgreSQL Production Schema
+-- Compatible with Supabase SQL Editor and direct PostgreSQL 15+
 -- ==============================================================================
 
 -- 1. Enable UUID Extension
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Assets Table (Multimodal Files, Metadata & Transcripts)
+-- 3. Assets Table (Multimodal Ingested Media & Extracted Metadata)
 CREATE TABLE IF NOT EXISTS public.assets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS public.chat_sessions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Chat Messages Table (Turns, Grounding & Citations)
+-- 5. Chat Messages Table (Conversations, Multi-Asset Grounding & Citations)
 CREATE TABLE IF NOT EXISTS public.chat_messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     session_id UUID REFERENCES public.chat_sessions(id) ON DELETE CASCADE,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS public.chat_messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Generated Reports Table
+-- 6. Generated Reports Table (Executive Cross-Modal Synthesis)
 CREATE TABLE IF NOT EXISTS public.reports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS public.reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. High-Performance Indexes
+-- 7. Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_assets_user_id ON public.assets(user_id);
 CREATE INDEX IF NOT EXISTS idx_assets_modality ON public.assets(modality);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON public.chat_messages(session_id);
@@ -76,7 +76,7 @@ ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 
--- 9. Service Role Full Access Policies (Allows Backend Service Role Key to manage records)
+-- 9. Row Level Security Policies (Allows backend service role & authenticated user operations)
 CREATE POLICY "Service Role full access on users" ON public.users
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role' OR true);
 
@@ -92,15 +92,16 @@ CREATE POLICY "Service Role full access on chat_messages" ON public.chat_message
 CREATE POLICY "Service Role full access on reports" ON public.reports
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role' OR true);
 
--- 10. Supabase Storage Bucket Initialization (if not exists)
+-- 10. Supabase Storage Bucket Setup
 INSERT INTO storage.buckets (id, name, public, file_size_limit)
 VALUES ('multimodal-assets', 'multimodal-assets', true, 52428800)
 ON CONFLICT (id) DO NOTHING;
 
--- Storage RLS: Public read access for assets
-CREATE POLICY "Public Access for multimodal assets" ON storage.objects
+-- Public read access policy for previewing multimodal media
+CREATE POLICY "Public Read for multimodal assets" ON storage.objects
     FOR SELECT USING (bucket_id = 'multimodal-assets');
 
--- Storage RLS: Service role and authenticated user insert access
-CREATE POLICY "Authenticated Uploads for multimodal assets" ON storage.objects
+-- Upload access policy for storage
+CREATE POLICY "Allow Uploads for multimodal assets" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'multimodal-assets');
+
