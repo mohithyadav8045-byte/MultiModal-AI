@@ -137,9 +137,8 @@ export default function RegisterPage() {
                     {[0, 1, 2, 3].map((step) => (
                       <div
                         key={step}
-                        className={`rounded-full transition-all duration-300 ${
-                          step < strength ? strengthColors[strength] : 'bg-slate-800'
-                        }`}
+                        className={`rounded-full transition-all duration-300 ${step < strength ? strengthColors[strength] : 'bg-slate-800'
+                          }`}
                       />
                     ))}
                   </div>
