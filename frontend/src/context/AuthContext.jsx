@@ -21,13 +21,15 @@ export function AuthProvider({ children }) {
       if (storedToken) {
         try {
           const res = await authService.getMe();
-          if (res.data && res.data.user) {
+          if (res?.data?.user) {
             setUser(res.data.user);
             localStorage.setItem('omnidoc_user', JSON.stringify(res.data.user));
           }
         } catch (err) {
-          console.warn('[AuthContext] Session invalid or expired.');
-          logout();
+          if (err.response && err.response.status === 401) {
+            console.warn('[AuthContext] Session invalid or expired.');
+            logout();
+          }
         }
       }
       setLoading(false);
