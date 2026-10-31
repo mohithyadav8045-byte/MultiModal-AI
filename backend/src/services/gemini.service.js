@@ -7,7 +7,13 @@ dotenv.config();
 let ai = null;
 const apiKey = process.env.GEMINI_API_KEY;
 
-if (apiKey && apiKey.trim().length > 0 && apiKey !== 'your_google_gemini_api_key_here') {
+const isDummyKey = !apiKey || 
+  apiKey.trim().length === 0 || 
+  apiKey.toLowerCase().includes('dummy') || 
+  apiKey.toLowerCase().includes('placeholder') || 
+  apiKey.toLowerCase().includes('your_google_gemini_api_key_here');
+
+if (!isDummyKey) {
   try {
     ai = new GoogleGenAI({ apiKey });
     console.log('[Gemini Service] Google GenAI SDK successfully initialized.');
@@ -15,7 +21,7 @@ if (apiKey && apiKey.trim().length > 0 && apiKey !== 'your_google_gemini_api_key
     console.warn('[Gemini Service] Initialization failed:', err.message);
   }
 } else {
-  console.warn('[Gemini Service] GEMINI_API_KEY is not set. Operating in resilient simulation mode until API key is provided.');
+  console.log('[Gemini Service] Operating in resilient simulation mode with dummy credentials (no Google credentials required).');
 }
 
 const SYSTEM_INSTRUCTION = `You are OmniMind AI, an elite multimodal intelligence assistant integrated into an enterprise knowledge workspace. Your role is to analyze, synthesize, and reason across diverse data modalities including text documents, high-resolution images, audio recordings, video streams, and structured data tables. 

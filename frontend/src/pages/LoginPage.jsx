@@ -56,6 +56,24 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Dummy Demo Credentials (No Google credentials required) */}
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-medium text-slate-300">Dummy / Demo Login</p>
+              <p className="text-[10px] text-slate-500 font-mono">demo@enterprise.com / password123</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('demo@enterprise.com');
+                setPassword('password123');
+              }}
+              className="px-2.5 py-1 text-[11px] font-semibold text-brand-400 hover:text-brand-300 bg-brand-500/10 hover:bg-brand-500/20 rounded-lg border border-brand-500/20 transition-colors"
+            >
+              Auto-Fill
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">

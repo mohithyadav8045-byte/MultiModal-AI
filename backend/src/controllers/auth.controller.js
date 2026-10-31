@@ -71,11 +71,25 @@ export async function login(req, res) {
     const { email, password } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Support dummy / demo credentials out-of-the-box (no Google credentials required)
+    const isDemoUser = normalizedEmail === 'demo@enterprise.com' || normalizedEmail === 'demo@omnimind.ai';
+
     // Find user
-    const result = await db.query(
+    let result = await db.query(
       'SELECT id, email, password_hash, full_name, created_at FROM users WHERE email = $1',
       [normalizedEmail]
     );
+
+    // Auto-provision demo user if using dummy demo credentials
+    if ((!result.rows || result.rows.length === 0) && isDemoUser) {
+      const demoHash = await bcrypt.hash(password || 'password123', SALT_ROUNDS);
+      result = await db.query(
+        `INSERT INTO users (email, password_hash, full_name)
+         VALUES ($1, $2, $3)
+         RETURNING id, email, full_name, created_at`,
+        [normalizedEmail, demoHash, 'Enterprise Demo User']
+      );
+    }
 
     if (!result.rows || result.rows.length === 0) {
       return res.status(401).json({
@@ -86,8 +100,8 @@ export async function login(req, res) {
 
     const user = result.rows[0];
 
-    // Compare bcrypt hash
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    // Compare bcrypt hash (allow demo user with password123 or entered password)
+    const isMatch = isDemoUser || await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
