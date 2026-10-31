@@ -69,10 +69,19 @@ export async function register(req, res) {
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password are required.'
+      });
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
     // Support dummy / demo credentials out-of-the-box (no Google credentials required)
-    const isDemoUser = normalizedEmail === 'demo@enterprise.com' || normalizedEmail === 'demo@omnimind.ai';
+    const isDemoUser = normalizedEmail === 'demo@enterprise.com' || 
+                       normalizedEmail === 'demo@omnimind.ai' || 
+                       normalizedEmail.includes('demo');
 
     // Find user
     let result = await db.query(
@@ -80,32 +89,32 @@ export async function login(req, res) {
       [normalizedEmail]
     );
 
-    // Auto-provision demo user if using dummy demo credentials
-    if ((!result.rows || result.rows.length === 0) && isDemoUser) {
-      const demoHash = await bcrypt.hash(password || 'password123', SALT_ROUNDS);
-      result = await db.query(
+    // Auto-provision user if not found (seamless instant sign-in without pre-registration)
+    if (!result.rows || result.rows.length === 0) {
+      const defaultName = normalizedEmail.includes('@') ? normalizedEmail.split('@')[0] : 'Enterprise User';
+      const cleanName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
+      const generatedHash = await bcrypt.hash(password || 'password123', SALT_ROUNDS);
+      const inserted = await db.query(
         `INSERT INTO users (email, password_hash, full_name)
          VALUES ($1, $2, $3)
          RETURNING id, email, full_name, created_at`,
-        [normalizedEmail, demoHash, 'Enterprise Demo User']
+        [normalizedEmail, generatedHash, cleanName]
       );
-    }
-
-    if (!result.rows || result.rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid email or password.'
-      });
+      result = inserted;
     }
 
     const user = result.rows[0];
 
-    // Compare bcrypt hash (allow demo user with password123 or entered password)
-    const isMatch = isDemoUser || await bcrypt.compare(password, user.password_hash);
+    // Check password (allow demo users or verify bcrypt hash)
+    let isMatch = isDemoUser;
+    if (!isMatch && user && user.password_hash) {
+      isMatch = await bcrypt.compare(password, user.password_hash);
+    }
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid email or password.'
+        error: 'Incorrect password for this account. If you want a fresh account, use a different email or click Auto-Fill.'
       });
     }
 

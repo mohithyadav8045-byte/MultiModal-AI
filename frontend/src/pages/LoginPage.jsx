@@ -24,7 +24,11 @@ export default function LoginPage() {
       navigate(from, { replace: true });
     } catch (err) {
       console.error('Login error:', err);
-      setError(err.response?.data?.error || 'Invalid credentials. Please verify your email and password.');
+      if (!err.response) {
+        setError(`Unable to connect to the backend server (${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}). Please ensure the backend server is running.`);
+      } else {
+        setError(err.response?.data?.error || 'Invalid credentials. Please verify your email and password.');
+      }
     } finally {
       setLoading(false);
     }

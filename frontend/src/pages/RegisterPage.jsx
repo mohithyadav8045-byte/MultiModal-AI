@@ -42,7 +42,11 @@ export default function RegisterPage() {
       navigate('/dashboard', { replace: true });
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err.response?.data?.error || 'Registration failed. Please check your information.');
+      if (!err.response) {
+        setError(`Unable to connect to the backend server (${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}). Please ensure the backend server is running.`);
+      } else {
+        setError(err.response?.data?.error || 'Registration failed. Please check your information.');
+      }
     } finally {
       setLoading(false);
     }
